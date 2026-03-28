@@ -298,3 +298,122 @@ Also you can decide for which codecs you want to enable hardware acceleration.
 
 Make sure Enable hardware encoding is checked. Scroll all the way to the bottom of the page and Save.
 
+### 3. Install Docker
+
+---
+
+#### 1. Install required packages for Docker
+
+```shell
+sudo apt update
+sudo apt install ca-certificates curl gnupg -y
+```
+
+#### 2. Add Docker's official GPG key
+
+```shell
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+```
+
+#### 3. Add the repository to Apt sources
+
+```shell
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+
+#### 4. Install Docker Engine
+
+```shell
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+```
+
+#### 4. Start Docker
+
+```shell
+sudo systemctl enable docker
+sudo systemctl start docker
+```
+
+#### 5. Verify Docker is running
+
+```shell
+sudo docker run hello-world
+```
+
+#### 6. Add your user to the docker group
+
+```shell
+sudo usermod -aG docker [YOUR_USER]
+```
+
+```shell
+newgrp docker
+```
+
+### 4. Migrate Samba and Jellyfin to Docker (Optional)
+
+---
+
+Since we already installed Docker, we can migrate Samba and Jellyfin to Docker to make them more portable and easier to manage. It is not mandatory to migrate them to Docker. But I like to have all my services running in Docker.
+
+#### 1. Stop Samba and Jellyfin
+
+Host OS is currently holding port 8096 for Jellyfin and ports 139/445 for Samba. We need to stop and disable these background services so Docker can use those ports.
+
+```shell
+sudo systemctl stop jellyfin smbd nmbd
+sudo systemctl disable jellyfin smbd nmbd
+```
+
+#### 2. Install the NVIDIA Container Toolkit
+
+While our Ubuntu system has the nvidia drivers installed, Docker itself is blind to the GPU without a translation layer.
+
+Run these commands to install the toolkit and restart the Docker daemon:
+
+```shell
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+  && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+sudo apt update
+sudo apt install -y nvidia-container-toolkit
+sudo systemctl restart docker
+```
+
+<!-- uid=1000(dinith) gid=1000(dinith) groups=1000(dinith),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),101(lxd),987(docker) -->
+
+**To ensure Jellyfin and Samba never run into the "hidden folder" permission walls, we will tell the containers to operate exactly as your USER user. Take note of the uid and gid numbers (they are usually 1000 for the primary user). We will use these in the compose file.**
+
+```shell
+id [YOUR_USER]
+```
+
+#### 3. Create the Docker Compose File
+
+create a dedicated folder for your media stack Docker configs to keep things clean.
+
+```shell
+mkdir -p ~/docker/media
+cd ~/docker/media
+vi docker-compose.yml
+```
+**use the compose file in the docker-compose/media folder and put your samba username and password in the .env file**
+
+Lockdown .env file
+```shell
+chmod 600 .env
+```
+
+#### 4. build and run the containers
+```shell
+docker compose up -d
+```
+
+**Because this is a fresh containerized instance, you will need to run through the quick initial setup again includin setting up authentication, libraries, and hardware acceleration**
+
+

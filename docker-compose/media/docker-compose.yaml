@@ -1,0 +1,36 @@
+services:
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000  # Replace with your uid if it wasn't 1000
+      - PGID=1000  # Replace with your gid if it wasn't 1000
+      - TZ=Asia/Colombo
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./jellyfin_config:/config
+      - /home/dinith/media/myfiles:/data/media
+    ports:
+      - 8096:8096
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  samba:
+    image: dperson/samba:latest
+    container_name: samba
+    environment:
+      - TZ=Asia/Colombo
+    ports:
+      - 139:139
+      - 445:445
+    volumes:
+      - /home/dinith/media/myfiles:/mount
+    # Syntax: -u "username;password" -s "share_name;/path;browsable;readonly;guest;users;admins"
+    command: '-u "${SAMBA_USER};${SAMBA_PASSWORD}" -s "myfiles;/mount;yes;no;no;${SAMBA_USER};${SAMBA_USER}"'
+    restart: unless-stopped
