@@ -18,6 +18,7 @@ If you are using a laptop like me make sure to connect it to ethernet always for
 - Jellyfin - Media server (https://jellyfin.org/)
 - Wireguard - VPN (https://www.wireguard.com/)
 - Docker - Containerization platform (https://www.docker.com/)
+- Dockhand - Docker container management (https://dockhand.dev/)
 - Kubernetes/Docker Compose - Container orchestration (https://kubernetes.io/)
 
 
@@ -402,7 +403,7 @@ mkdir -p ~/docker/media
 cd ~/docker/media
 vi docker-compose.yml
 ```
-**use the compose file in the docker-compose/media folder and put your samba username and password in the .env file**
+**use the compose file in the docker-compose/media folder and put your samba username and password in the .env file. From now on we will be running more and more containers, so the label 'category' will be useful to group related containers and manage them**
 
 Lockdown .env file
 ```shell
@@ -415,5 +416,14 @@ docker compose up -d
 ```
 
 **Because this is a fresh containerized instance, you will need to run through the quick initial setup again includin setting up authentication, libraries, and hardware acceleration**
+
+### 5. Manage and Monitor Docker Containers using Dockhand
+
+In future we will be running more and more services in Docker. So we need a way to manage and monitor them. We will use Dockhand for this purpose. 
+
+**Another option is Portainer, which is a more feature-rich and user-friendly alternative to Dockhand. However, it is not as customizable as Dockhand and only include basic monitoring. Also Dockhand is catered for Home server / homelab users. But Dockhand is mostly for single node (no full swarm support yet) while Portainer is for multi-node clusters. So if you are planning to run more than one node, with kubernetes in future, Portainer is the better choice.**
+
+
+#### 1. Install Dockhand
 
 

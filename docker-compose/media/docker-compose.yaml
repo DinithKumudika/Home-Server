@@ -13,6 +13,9 @@ services:
     ports:
       - 8096:8096
     restart: unless-stopped
+    labels:
+      - "category=multimedia"
+      - "priority=medium"
     deploy:
       resources:
         reservations:
@@ -34,3 +37,6 @@ services:
     # Syntax: -u "username;password" -s "share_name;/path;browsable;readonly;guest;users;admins"
     command: '-u "${SAMBA_USER};${SAMBA_PASSWORD}" -s "myfiles;/mount;yes;no;no;${SAMBA_USER};${SAMBA_USER}"'
     restart: unless-stopped
+    labels:
+      - "category=multimedia"
+      - "priority=high"
