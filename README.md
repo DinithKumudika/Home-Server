@@ -424,6 +424,69 @@ In future we will be running more and more services in Docker. So we need a way 
 **Another option is Portainer, which is a more feature-rich and user-friendly alternative to Dockhand. However, it is not as customizable as Dockhand and only include basic monitoring. Also Dockhand is catered for Home server / homelab users. But Dockhand is mostly for single node (no full swarm support yet) while Portainer is for multi-node clusters. So if you are planning to run more than one node, with kubernetes in future, Portainer is the better choice.**
 
 
-#### 1. Install Dockhand
+#### 1. Find your Docker Group ID
+
+For security, Dockhand runs as a standard user instead of a root administrator. To let it control Docker, we need to find your server's specific "Docker Group ID" number.
+
+```shell
+stat -c '%g' /var/run/docker.sock
+```
+
+#### 2. Create the Docker Compose File
+
+Let's create a new folder just for utility containers like Dockhand and open a new compose file. 
+
+**find the docker-compose.yaml file in the docker-compose/utility folder**
+
+```shell
+mkdir -p ~/docker/utility
+cd ~/docker/utility
+vi docker-compose.yml
+```
+start the containers.
+
+#### 3. Add the Local Environment
+
+To access the Dockhand dashboard, go to the address `<your_ip>:3000`.
+
+1. On the left sidebar, click Settings, then go to the Environments tab.
+2. Click + Add Environment.
+3. Name it something like "Home Server".
+4. For the connection type, select Unix Socket.
+5. Add the Local API as the public API.
+5. Click Add.
+
+![Dockhand Add Environment](screenshots/dockhand_add_env.png)
+
+If you click back to the Containers tab, your containers will now appear!
+
+![Dockhand Containers](screenshots/docker_containers.png)
+
+#### 4. Set docker compose files in Stacks
+
+Click on Stacks in the left sidebar. There you can see our containers are grouped by the directories we created for each docker-compose file. But the source is untracked and compose file location is unknown. Since we have mounted our home directory to the container, we can set the source to relevant directories. Click on edit for the stack and select the source to be the directory where the docker-compose file is located for that container group. 
+
+**From now on you can directly edit the docker-compose files from here and start/stop/restart the containers of each stack.**
+
+
+![Dockhand Add Stack](screenshots/dockhand_add_stack.png)
+
+#### 5. Turn on Authentication
+
+By default, Dockhand is not password protected. To secure your dashboard, go to Settings → Authentication and enable it. You can then set a username and password.
+
+1. Go back to Settings, and click the Authentication tab.
+2. Click Add User.
+3. Type in your desired username and password, and click Create User.
+4. Finally, flip the main Authentication toggle switch from OFF to ON.
+
+![Dockhand Authentication](screenshots/dockhand_add_user.png)
+
+You will immediately be logged out and forced to log back in securely.
+
+
+
+
+
 
 
