@@ -14,12 +14,15 @@ If you are using a laptop like me make sure to connect it to ethernet always for
 
 ## Tools and software to installed
 
-- Samba - Network Storage and File sharing (https://www.samba.org/)
-- Jellyfin - Media server (https://jellyfin.org/)
-- Wireguard - VPN (https://www.wireguard.com/)
-- Docker - Containerization platform (https://www.docker.com/)
-- Dockhand - Docker container management (https://dockhand.dev/)
-- Kubernetes/Docker Compose - Container orchestration (https://kubernetes.io/)
+| Service | Description | Website |
+| :--- | :--- | :--- |
+| Samba | Network Storage and File sharing | [samba.org](https://www.samba.org/) |
+| Jellyfin | Media server (Movies, Tv Shows) | [jellyfin.org](https://jellyfin.org/) |
+| Navidrome | Music streaming| [navidrome.org](https://www.navidrome.org/) |
+| Wireguard | VPN | [wireguard.com](https://www.wireguard.com/) |
+| Docker | Containerization platform | [docker.com](https://www.docker.com/) |
+| Dockhand | Docker container management | [dockhand.dev](https://dockhand.dev/) |
+| Kubernetes/Docker Compose | Container orchestration | [kubernetes.io](https://kubernetes.io/) |
 
 
 ## OS Installation and Remote Access Configuration
@@ -484,9 +487,70 @@ By default, Dockhand is not password protected. To secure your dashboard, go to 
 
 You will immediately be logged out and forced to log back in securely.
 
+### 6. Setting up Nginx
 
+Now we need a way to access our multiple self-hosted services easier, cleaner, and safer. For that we need a reverse proxy. Instead of exposing every app directly on different ports, the reverse proxy sits in front and routes traffic to the correct internal service.
 
+Example without reverse proxy:
 
+192.168.1.10:3000 → Dockhand\
+192.168.1.10:8096 → Jellyfin
 
+Example with reverse proxy:
+
+dockhand.home → Dockhand\
+jellyfin.home → Jellyfin
+
+All through standard HTTP on port 80 and later HTTPS on port 443 while reducing the attack surface.
+
+#### 1. Create the Folder Structure
+We need a main folder for NGINX in the utility folder, plus a sub-folder to hold our custom configuration files.
+
+```shell
+mkdir -p ~/docker/utility/nginx/conf.d
+cd ~/docker/utility/nginx
+```
+#### 2. Create the NGINX Configuration File
+Instead of editing the main NGINX system file, it is best practice to create a dedicated configuration file just for Jellyfin.
+
+Open a new file in the conf.d directory:
+```shell
+vi jellyfin.conf
+```
+
+find the jellyfin configureation here [jellyfin.conf](docker-compose/utility/nginx/conf.d/jellyfin.conf). 
+This tells NGINX to listen on port 80 (standard HTTP) and securely forward all the complex media traffic to the Jellyfin container. change the server_name to your prefered sub-domain (in this case jellyfin.home).
+
+Follow the same steps for dockhand.
+[dockhand.conf](docker-compose/utility/nginx/conf.d/dockhand.conf)
+
+#### 3. Create the Docker Compose File for NGINX
+
+you can find the nginx docker compose here [docker-compose.yaml](docker-compose/utility/nginx/docker-compose.yaml). 
+
+place this compose file in the `~/docker/utility/nginx` folder. and start the container.
+
+```shell
+docker compose up -d
+```
+
+P.S-: any time you add a new configuration file for a service, you can reload the NGINX container to quickly read the new files without taking the nginx server offline.
+
+```shell
+docker exec nginx nginx -s reload
+```
+
+Step 4: Update the windows hosts file
+
+Now we need to tell our windows computer to forward the sub-domain requests to our home server ip address. Since we are not using a domain name, we can use the hosts file at `C:\Windows\System32\drivers\etc` to map the sub-domain to our home server ip address. Open the hosts file in your windows computer as administrator and add the following lines:
+
+```
+[IP_ADDRESS] [SUB_DOMAIN_FOR_JELLYFIN]
+[IP_ADDRESS] [SUB_DOMAIN_FOR_DOCKHAND]
+```
+
+now you can access the services using the sub-domains. 
+
+![Jellyfin with sub domain](screenshots/jellyfin_sub_domain.png)
 
 
