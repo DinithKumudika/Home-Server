@@ -540,7 +540,7 @@ P.S-: any time you add a new configuration file for a service, you can reload th
 docker exec nginx nginx -s reload
 ```
 
-Step 4: Update the windows hosts file
+#### 4: Update the windows hosts file
 
 Now we need to tell our windows computer to forward the sub-domain requests to our home server ip address. Since we are not using a domain name, we can use the hosts file at `C:\Windows\System32\drivers\etc` to map the sub-domain to our home server ip address. Open the hosts file in your windows computer as administrator and add the following lines:
 
@@ -553,4 +553,156 @@ now you can access the services using the sub-domains.
 
 ![Jellyfin with sub domain](screenshots/jellyfin_sub_domain.png)
 
+#### 5: Setup firewall (If you haven't)
 
+**Firewall is a security tool that blocks unwanted traffic from entering your server. so we need to setup a firewall to block unwanted traffic from entering our server.**
+
+**Install ufw (uncomplicated firewall)**
+```shell
+apt install ufw
+```
+
+**Check ufw status**
+```shell
+ufw status
+```
+
+**open port 22 for ssh**
+```shell
+ufw allow OpenSSH
+```
+
+**Enable ufw**
+```shell
+ufw enable
+```
+
+**open port 80 and 443 for nginx**
+```shell
+ufw allow 'Nginx Full'
+```
+
+**this way you only allow necessary ports (22 for ssh, 80 for http and 443 for https) to be open, hence increasing security.**
+
+### 7. Setup HTTPS using Local Certificate
+
+To get HTTPS strictly inside our network, we create a Self-Signed Certificate. Our server will act as its own security authority, generating its own encryption keys. This ensures all passwords and media streams traveling between your PC, phone, and server are completely encrypted.
+
+#### Step 1: Generate the Local Certificate
+
+Create a folder to hold security keys
+
+```shell
+mkdir -p ~/docker/utility/nginx/ssl
+cd ~/docker/utility/nginx/ssl
+```
+
+Run this command to generate a certificate valid for 10 years. It creates two files: the public certificate (local.crt) and the private key (local.key).
+
+```shell
+sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout local.key -out local.crt -subj "/CN=jellyfin.local"
+```
+
+#### Step 2: Update NGINX Configuration
+
+Open the compose file for Nginx. Under the nginx service, add volume configuration for your new SSL folder.
+
+```yaml
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d
+      - ./data:/data
+      - ./ssl:/etc/nginx/ssl
+    labels:
+      - "category=utility"
+```
+
+#### Step 3: Apply the Certificate to NGINX
+
+Now we need to update our NGINX configurations to use the new SSL files instead of HTTP.
+
+Open the Jellyfin config file and replace its entire content with the code below.
+
+```shell
+server {
+    listen 80;
+    server_name jellyfin.home;
+    
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name jellyfin.home;
+
+    # Point to your custom self-signed keys
+    ssl_certificate /etc/nginx/ssl/local.crt;
+    ssl_certificate_key /etc/nginx/ssl/local.key;
+
+    client_max_body_size 20M;
+    proxy_buffering off;
+
+    location / {
+        proxy_pass http://[IP_ADDRESS]:8096;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /socket {
+        proxy_pass http://[IP_ADDRESS]:8096;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Open the dockhand config file and replace its entire content with the code below.
+
+```shell
+server {
+    listen 80;
+    server_name dockhand.home;
+    
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name dockhand.home;
+
+    # Point to your custom self-signed keys
+    ssl_certificate /etc/nginx/ssl/local.crt;
+    ssl_certificate_key /etc/nginx/ssl/local.key;
+
+    client_max_body_size 20M;
+    proxy_buffering off;
+
+    location / {
+        proxy_pass http://[IP_ADDRESS]:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+save and restart NGINX.
